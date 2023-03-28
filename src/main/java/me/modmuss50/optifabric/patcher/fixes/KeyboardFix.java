@@ -1,11 +1,14 @@
 package me.modmuss50.optifabric.patcher.fixes;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableSet;
 
+import me.modmuss50.optifabric.mod.OptifabricSetup;
 import org.apache.commons.lang3.Validate;
 
 import org.objectweb.asm.Handle;
@@ -21,17 +24,23 @@ import me.modmuss50.optifabric.util.RemappingUtils;
 
 public class KeyboardFix implements ClassFixer {
 	private final String screenClass = RemappingUtils.getClassName("class_437");
-	private final Set<String> revertMethods = ImmutableSet.of(
-			RemappingUtils.getMethodName("class_309", "method_1466", "(JIIII)V"), //Keyboard, onKey
-			RemappingUtils.getMethodName("class_309", "method_1454", "(IL" + screenClass + ";[ZIII)V"),
-			RemappingUtils.getMethodName("class_309", "method_1458", "(L" + screenClass + ";II)V"),
-			RemappingUtils.getMethodName("class_309", "method_1473", "(L" + screenClass + ";CI)V"),
-			RemappingUtils.getMethodName("class_309", "method_1463", "(Lnet/minecraft/class_2561)V"),
-			RemappingUtils.getMethodName("class_309", "method_1464", "(Lnet/minecraft/class_2561)V")
-	);
+	private Set<String> revertMethods;
 
 	@Override
 	public void fix(ClassNode optifine, ClassNode minecraft) {
+		List<String> revert = new ArrayList<>(Arrays.asList(
+				RemappingUtils.getMethodName("class_309", "method_1466", "(JIIII)V"), //Keyboard, onKey
+				RemappingUtils.getMethodName("class_309", "method_1454", "(IL" + screenClass + ";[ZIII)V"),
+				RemappingUtils.getMethodName("class_309", "method_1463", "(Lnet/minecraft/class_2561)V"),
+				RemappingUtils.getMethodName("class_309", "method_1464", "(Lnet/minecraft/class_2561)V")
+		));
+
+		if (OptifabricSetup.isPresent("minecraft", ">=1.18.2")) {
+			revert.add(RemappingUtils.getMethodName("class_309", "method_1458", "(L" + screenClass + ";II)V"));
+			revert.add(RemappingUtils.getMethodName("class_309", "method_1473", "(L" + screenClass + ";CI)V"));
+		}
+		revertMethods = ImmutableSet.copyOf(revert);
+
 		Validate.noNullElements(revertMethods, "Failed to remap Keyboard method name %d"); //ImmutableSet iteration order is stable
 
 		//Remove the "broken" OptiFine methods
