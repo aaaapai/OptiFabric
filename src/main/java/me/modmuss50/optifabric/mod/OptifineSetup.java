@@ -17,7 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -35,9 +34,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.RecordComponentNode;
 
 import net.fabricmc.loader.api.FabricLoader;
@@ -326,7 +323,7 @@ public class OptifineSetup {
 		};
 	}
 
-	//Gets the minecraft librarys
+	//Gets the minecraft libraries
 	private static Path[] getLibs(Path minecraftJar) {
 		Path[] libs = FabricLauncherBase.getLauncher().getLoadTimeDependencies().stream().map(url -> {
 			try {
@@ -355,7 +352,7 @@ public class OptifineSetup {
 		return libs;
 	}
 
-	//Gets the offical minecraft jar
+	//Gets the official minecraft jar
 	private static Path getMinecraftJar() {
 		String givenJar = System.getProperty("optifabric.mc-jar");
 		if (givenJar != null) {
@@ -371,29 +368,29 @@ public class OptifineSetup {
 		Path minecraftJar = getLaunchMinecraftJar();
 
 		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
-			Path officialNames = minecraftJar.resolveSibling(String.format("minecraft-%s-client.jar", OptifineVersion.minecraftVersion));
-
-			if (Files.notExists(officialNames)) {
-				Path parent = minecraftJar.getParent().resolveSibling(String.format("minecraft-%s-client.jar", OptifineVersion.minecraftVersion));
-
-				if (Files.notExists(parent)) {
-					Path alternativeParent = parent.resolveSibling("minecraft-client.jar");
-
-					if (Files.notExists(alternativeParent)) {
-						throw new AssertionError("Unable to find Minecraft dev jar! Tried " + officialNames + ", " + parent + " and " + alternativeParent
-													+ "\nPlease supply it explicitly with -Doptifabric.mc-jar");
-					}
-
-					parent = alternativeParent;
-				}
-
-				officialNames = parent;
-			}
-
-			minecraftJar = officialNames;
+			return getMinecraftDevJar(minecraftJar);
 		}
 
 		return minecraftJar;
+	}
+
+	private static Path getMinecraftDevJar(Path minecraftJar) {
+		Path officialNames = minecraftJar.resolveSibling(String.format("minecraft-%s-client.jar", OptifineVersion.minecraftVersion));
+		if (Files.exists(officialNames)) return officialNames;
+
+		Path parent = minecraftJar.getParent().resolveSibling(String.format("minecraft-%s-client.jar", OptifineVersion.minecraftVersion));
+		if (Files.exists(parent)) return parent;
+
+		Path alternativeParent = parent.resolveSibling("minecraft-client.jar");
+		if (Files.exists(alternativeParent)) return alternativeParent;
+
+		//user.home shouldn't be null (but it can be)
+		String gradleUserHome = System.getProperty("GRADLE_USER_HOME", System.getProperty("user.home", "."));
+		Path newLoom = Paths.get(gradleUserHome, ".gradle/caches/fabric-loom", OptifineVersion.minecraftVersion, "minecraft-client.jar");
+		if (Files.exists(newLoom)) return newLoom;
+
+		throw new AssertionError(String.format("Unable to find Minecraft dev jar! Tried %s, %s, %s and %s", officialNames, parent, alternativeParent, newLoom)
+				+ "\nPlease supply it explicitly with -Doptifabric.mc-jar");
 	}
 
 	private static Path getLaunchMinecraftJar() {
