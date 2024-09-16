@@ -12,7 +12,7 @@ buildscript {
 		}
 	}
 	dependencies {
-		classpath 'org.ow2.asm:asm:9.6'
+		classpath 'org.ow2.asm:asm:9.7'
 		classpath 'com.github.Chocohead.Fabric-Loom:fabric-loom:2fc5f55'
 		classpath 'com.github.johnrengelman.shadow:com.github.johnrengelman.shadow.gradle.plugin:4.0.4'
 		if (gradle.gradleVersion.tokenize('.' as char)[0].toInteger() <= 6) {
