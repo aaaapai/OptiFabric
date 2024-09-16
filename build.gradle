@@ -167,10 +167,6 @@ task proguardJar(type: ProGuardTask, dependsOn: fatJar) {
 	injars fatJar.archivePath
 	outjars proguardFile
 	configuration file('proguard.conf')
-
-	-dontwarn net.fabricmc.mappingio.**
-
-        -keep class net.fabricmc.mappingio.** { *;}
 }
 
 import org.zeroturnaround.zip.ZipUtil;
