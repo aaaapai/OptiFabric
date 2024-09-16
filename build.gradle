@@ -15,6 +15,7 @@ buildscript {
 		classpath 'org.ow2.asm:asm:9.7'
 		classpath 'com.github.Chocohead.Fabric-Loom:fabric-loom:2fc5f55'
 		classpath 'com.github.johnrengelman.shadow:com.github.johnrengelman.shadow.gradle.plugin:4.0.4'
+		classpath 'net.fabricmc:mapping-io:0.6.1' 
 		if (gradle.gradleVersion.tokenize('.' as char)[0].toInteger() <= 6) {
 			classpath('com.guardsquare:proguard-gradle:7.0.1') {
 				exclude group: 'com.android.tools.build'
