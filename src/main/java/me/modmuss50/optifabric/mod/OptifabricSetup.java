@@ -134,9 +134,6 @@ public class OptifabricSetup implements Runnable {
 				Mixins.addConfiguration("optifabric.compat.fabric-rendering.mixins.json");
 			}
 		}
-		if (isPresent("fabric-rendering-v1", ">=1.13.0 <2.0") || isPresent("fabric-rendering-v1", ">=2.1.0")) {
-			Mixins.addConfiguration("optifabric.compat.fabric-rendering.extra-mixins.json");
-		}
 
 		if (isPresent("fabric-block-view-api-v2")) {
 			Mixins.addConfiguration("optifabric.compat.fabric-block-view-api.mixins.json");
