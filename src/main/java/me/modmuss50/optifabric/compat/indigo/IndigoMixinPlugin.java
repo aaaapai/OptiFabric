@@ -24,7 +24,7 @@ public class IndigoMixinPlugin extends InterceptingMixinPlugin {
 			case "RebuildTaskNewMixin":
 			case "RebuildTaskNewerMixin":
 			case "RebuildTaskMixin_205": {
-				String renderDesc = "(FFFLnet/minecraft/class_750;)Lnet/minecraft/class_846$class_851$class_4578$class_7435;";
+				String renderDesc = "(FFFLnet/minecraft/class_750;)Lnet/minecraft/class_846$class_851$class_4578;";
 				String render = RemappingUtils.getMethodName("class_846$class_851$class_4578", "method_22785", renderDesc); //(BlockBufferBuilderStorage)RenderData
 				renderDesc = RemappingUtils.mapMethodDescriptor(renderDesc);
 				String getAllInBoxMutableDesc = RemappingUtils.mapMethodDescriptor("(Lnet/minecraft/class_2338;Lnet/minecraft/class_2338;)Ljava/lang/Iterable;");
