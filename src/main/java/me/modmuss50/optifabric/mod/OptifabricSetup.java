@@ -125,11 +125,14 @@ public class OptifabricSetup implements Runnable {
 				Mixins.addConfiguration("optifabric.compat.fabric-rendering.mixins.json");
 			}
 		}
-		if (isPresent("fabric-rendering-v1", ">=1.13.0 <2.0") || isPresent("fabric-rendering-v1", ">=2.1.0")) {
-			Mixins.addConfiguration("optifabric.compat.fabric-rendering.extra-mixins.json");
-		}
 
-		if (isPresent("fabric-rendering-data-attachment-v1")) {
+		if (isPresent("fabric-block-view-api-v2")) {
+			Mixins.addConfiguration("optifabric.compat.fabric-block-view-api.mixins.json");
+
+			if (isPresent("fabric-rendering-data-attachment-v1")) {
+				Mixins.addConfiguration("optifabric.compat.fabric-rendering-data.mixins.json");
+			}
+		} else if (isPresent("fabric-rendering-data-attachment-v1")) {
 			Mixins.addConfiguration("optifabric.compat.fabric-rendering-data.mixins.json");
 		}
 
@@ -140,9 +143,14 @@ public class OptifabricSetup implements Runnable {
 
 					for (MethodNode method : node.methods) {
 						if ("renderBatched".equals(method.name) && method.desc.endsWith(desc)) {
-							Mixins.addConfiguration("optifabric.compat.indigo.newer-mixins.json");
-							return;
-						}
+							if (isPresent("minecraft", ">1.20.4")) {
+								Mixins.addConfiguration("optifabric.compat.indigo.205-mixins.json");
+                            } else {
+								Mixins.addConfiguration("optifabric.compat.indigo.newer-mixins.json");
+                            }
+
+                            return;
+                        }
 					}
 
 					Mixins.addConfiguration("optifabric.compat.indigo.new-mixins.json");
@@ -178,9 +186,15 @@ public class OptifabricSetup implements Runnable {
 			Mixins.addConfiguration("optifabric.compat.fabric-lifecycle-events.new-mixins.json");
 		}
 
+		if (isPresent("fabric-model-loading-api-v1")) {
+			Mixins.addConfiguration("optifabric.compat.fabric-model-loading-api.mixins.json");
+		}
+
 		Mixins.addConfiguration("optifabric.optifine.mixins.json");
 		if (OptifabricSetup.isPresent("minecraft", "<=1.19.2")) {
 			Mixins.addConfiguration("optifabric.optifine.old-mixins.json");
+		} else {
+			Mixins.addConfiguration("optifabric.optifine.new-mixins.json");
 		}
 
 		if (isPresent("clothesline")) {
