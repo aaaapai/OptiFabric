@@ -93,9 +93,12 @@ compileJava {
 		'Lnet/minecraft/client/render/GameRenderer;Lnet/minecraft/client/render/LightmapTextureManager;Lorg/joml/Matrix4f;)V', 'render', 'method_22710'
 		method 'net/minecraft/client/gui/screen/Screen', '(Lnet/minecraft/client/util/math/MatrixStack;IIF)V', 'renderWithTooltip', 'method_47413'
 		classes += ['net/minecraft/class_5944': 'net/minecraft/class_5944']
-		method 'net/minecraft/class_5944', '(Lnet/minecraft/class_5912;Lnet/minecraft/util/Identifier;Lnet/minecraft/client/render/VertexFormat;)V', '<init>', '<init>'
+		method 'net/minecraft/class_5944', '(Lnet/minecraft/class_5912;Ljava/lang/String;Lnet/minecraft/class_293;)V', '<init>', '<init>'
 		method 'net/minecraft/client/gui/screen/Screen', '(Lnet/minecraft/class_332;IIF)V', 'renderWithTooltip', 'method_47413'
 		classes += ['net/minecraft/class_7775': 'net/minecraft/class_7775']
+		classes += ['net/minecraft/class_5944': 'net/minecraft/class_5944']
+		classes += ['net/minecraft/class_2960': 'net/minecraft/class_2960']
+
 	}
 }
 
