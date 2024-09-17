@@ -24,6 +24,7 @@ import me.modmuss50.optifabric.util.ASMUtils;
 import me.modmuss50.optifabric.util.ZipUtils;
 
 public class OptifineVersion {
+	public static String targetMinecraftVersion;
 	public static String version;
 	public static String minecraftVersion;
 	public static JarType jarType;
@@ -84,6 +85,9 @@ public class OptifineVersion {
 		}
 
 		for (FieldNode fieldNode : classNode.fields) {
+			if ("TARGET_MC_VERSION".equals(fieldNode.name)) {
+				targetMinecraftVersion = (String) fieldNode.value;
+			}
 			if ("VERSION".equals(fieldNode.name)) {
 				version = (String) fieldNode.value;
 			}
@@ -111,11 +115,12 @@ public class OptifineVersion {
 			}
 		} catch (IOException | IllegalStateException e) {
 			OptifabricError.setError(e, "Failed to find current minecraft version, please report this");
-			e.printStackTrace();
+			OptifabricSetup.LOGGER.error(e);
 			return JarType.INTERNAL_ERROR;
 		}
 
-		if (!currentMcVersion.equals(minecraftVersion)) {
+		Boolean canLoad = minecraftVersion.contains("rc") ? currentMcVersion.equals(targetMinecraftVersion) : currentMcVersion.equals(minecraftVersion);
+		if (!canLoad) {
 			OptifabricError.setError("This version of OptiFine from %s is not compatible with the current minecraft version\n\nOptifine requires %s you are running %s",
 										file, minecraftVersion, currentMcVersion);
 			return JarType.INCOMPATIBLE;

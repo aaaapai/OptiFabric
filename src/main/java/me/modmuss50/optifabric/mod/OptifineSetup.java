@@ -1,10 +1,12 @@
 package me.modmuss50.optifabric.mod;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
@@ -12,6 +14,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -40,15 +42,11 @@ import org.objectweb.asm.tree.RecordComponentNode;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.launch.common.FabricLauncherBase;
-import net.fabricmc.mapping.tree.ClassDef;
-import net.fabricmc.mapping.tree.FieldDef;
-import net.fabricmc.mapping.tree.MethodDef;
-import net.fabricmc.mapping.tree.TinyTree;
 
 import net.fabricmc.tinyremapper.IMappingProvider;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
-import net.fabricmc.tinyremapper.IMappingProvider.Member;
+import net.fabricmc.tinyremapper.TinyUtils;
 import net.fabricmc.tinyremapper.OutputConsumerPath.Builder;
 
 import me.modmuss50.optifabric.mod.OptifineVersion.JarType;
@@ -87,7 +85,7 @@ public class OptifineSetup {
 
 			//Validate that the classCache found is for the same input jar
 			if (Arrays.equals(classCache.getHash(), modHash)) {
-				System.out.println("Found existing patched optifine jar, using that");
+				OptifabricSetup.LOGGER.info("Found existing patched optifine jar, using that");
 
 				if (classCache.isConverted()) {
 					classCache.save(optifinePatches);
@@ -95,10 +93,10 @@ public class OptifineSetup {
 
 				return Pair.of(remappedJar, classCache);
 			} else {
-				System.out.println("Class cache is from a different optifine jar, deleting and re-generating");
+				OptifabricSetup.LOGGER.info("Class cache is from a different optifine jar, deleting and re-generating");
 			}
 		} else {
-			System.out.println("Setting up optifine for the first time, this may take a few seconds.");
+			OptifabricSetup.LOGGER.info("Setting up optifine for the first time, this may take a few seconds.");
 		}
 
 		Path minecraftJar = getMinecraftJar();
@@ -131,7 +129,7 @@ public class OptifineSetup {
 		File jarOfTheFree = new File(workDir, "Optifine-jarofthefree.jar");
 		LambdaRebuilder rebuilder = new LambdaRebuilder(minecraftJar.toFile());
 
-		System.out.println("De-Volderfiying jar");
+		OptifabricSetup.LOGGER.info("De-Volderfiying jar");
 
 		//Find all the SRG named classes and remove them
 		ZipUtils.transform(optifineModJar, new ZipTransformer() {
@@ -182,7 +180,7 @@ public class OptifineSetup {
 		rebuilder.close();
 
 		String namespace = FabricLoader.getInstance().getMappingResolver().getCurrentRuntimeNamespace();
-		System.out.println("Remapping optifine from official to " + namespace);
+		OptifabricSetup.LOGGER.info("Remapping optifine from official to " + namespace);
 		File completeJar = new File(workDir, "Optifine-remapped.jar");
 		remapOptifine(jarOfTheFree, getLibs(minecraftJar), completeJar, createMappings("official", namespace, rebuilder));
 
@@ -194,7 +192,7 @@ public class OptifineSetup {
 
 		Consumer<ZipVisitor> jarFinaliser;
 		if (remappedJar.exists() && !remappedJar.delete()) {
-			System.err.println("Failed to clear " + remappedJar + ", is another instance of the game running?");
+			OptifabricSetup.LOGGER.info("Failed to clear " + remappedJar + ", is another instance of the game running?");
 			remappedJar = completedJar;
 			jarFinaliser = visitor -> ZipUtils.filterInPlace(completedJar, visitor);
 		} else {
@@ -202,7 +200,7 @@ public class OptifineSetup {
 			jarFinaliser = visitor -> ZipUtils.filter(completedJar, visitor, finalRemappedJar);
 		}
 		if (optifinePatches.exists() && !optifinePatches.delete()) {
-			System.err.println("Failed to clear " + optifinePatches + ", is another instance of the game running?");
+			OptifabricSetup.LOGGER.info("Failed to clear " + optifinePatches + ", is another instance of the game running?");
 			optifinePatches = new File(workDir, "Optifine.classes.gz");
 		}
 
@@ -212,7 +210,7 @@ public class OptifineSetup {
 
 		boolean extract = Boolean.getBoolean("optifabric.extract");
 		if (extract) {
-			System.out.println("Extracting optifine classes");
+			OptifabricSetup.LOGGER.info("Extracting optifine classes");
 			File optifineClasses = new File(versionDir, "optifine-classes");
 			if(optifineClasses.exists()){
 				FileUtils.deleteDirectory(optifineClasses);
@@ -224,7 +222,7 @@ public class OptifineSetup {
 	}
 
 	private static void runInstaller(File installer, File output, File minecraftJar) throws IOException {
-		System.out.println("Running optifine patcher");
+		OptifabricSetup.LOGGER.info("Running optifine patcher");
 
 		try (URLClassLoader classLoader = new URLClassLoader(new URL[] {installer.toURI().toURL()}, OptifineSetup.class.getClassLoader())) {
 			Class<?> clazz = classLoader.loadClass("optifine.Patcher");
@@ -242,12 +240,13 @@ public class OptifineSetup {
 	private static void remapOptifine(Path input, Path[] libraries, Path output, IMappingProvider mappings) throws IOException {
 		Files.deleteIfExists(output);
 
+		Preloader.preloadTinyRemapper();
 		TinyRemapper remapper = TinyRemapper.newRemapper().withMappings(mappings).skipLocalVariableMapping(true).renameInvalidLocals(FabricLoader.getInstance().isDevelopmentEnvironment()).rebuildSourceFilenames(true).build();
 
 		try (OutputConsumerPath outputConsumer = new Builder(output).assumeArchive(true).build()) {
 			outputConsumer.addNonClassFiles(input);
-			remapper.readInputs(input);
-			remapper.readClassPath(libraries);
+			remapper.readInputsAsync(input);
+			remapper.readClassPathAsync(libraries);
 
 			remapper.apply(outputConsumer);
 		} catch (Exception e) {
@@ -259,67 +258,78 @@ public class OptifineSetup {
 
 	//Optifine currently has two fields that match the same name as Yarn mappings, we'll rename Optifine's to something else
 	private static IMappingProvider createMappings(String from, String to, IMappingProvider extra) {
-		TinyTree normalMappings = FabricLauncherBase.getLauncher().getMappingConfiguration().getMappings();
+		return new IMappingProvider() {
+			private void standardExtraMappings(ContextualMappingProvider mapper) {
+				String rebuildTask = "net/minecraft/class_846$class_851$class_4578";
+				String builtChunk = "net/minecraft/class_846$class_851";
+				mapper.add(ContextualMapping.forField((out, context) -> {
+					out.acceptField(new Member(context.unmapClass(rebuildTask), "this$1", 'L' + context.unmapClass(builtChunk) + ';'), "field_20839");
+				}).usingClasses(rebuildTask, builtChunk));
 
-		Map<String, ClassDef> nameToClass = normalMappings.getClasses().stream().collect(Collectors.toMap(clazz -> clazz.getName("intermediary"), Function.identity()));
-		Map<Member, String> extraMethods = new HashMap<>();
-		Map<Member, String> extraFields = new HashMap<>();
+				String particleManager = "net/minecraft/class_702";
+				ContextualMappingContext.Member factories = new ContextualMappingContext.Member(particleManager, "field_3835");
+				mapper.add(ContextualMapping.forField((out, context) -> {
+					ContextualMappingContext.Member fromFactories = context.unmapField(factories);
+					out.acceptField(new Member(context.unmapClass(particleManager), fromFactories.name, "Ljava/util/Map;"), context.mapField(factories));
+				}).usingClass(particleManager).usingField(factories));
 
-		ClassDef rebuildTask = nameToClass.get("net/minecraft/class_846$class_851$class_4578");
-		ClassDef builtChunk = nameToClass.get("net/minecraft/class_846$class_851");
-		extraFields.put(new Member(rebuildTask.getName(from), "this$1", 'L' + builtChunk.getName(from) + ';'), "field_20839");
+				String clientEntityHandler = "net/minecraft/class_638$class_5612";
+				String clientWorld = "net/minecraft/class_638";
+				mapper.add(ContextualMapping.forField((out, context) -> {//Only present in 1.17.x (20w45a+)
+					out.acceptField(new Member(context.unmapClass(clientEntityHandler), "this$0", 'L' + context.unmapClass(clientWorld) + ';'), "field_27735");
+				}).usingClasses(clientEntityHandler, clientWorld));
 
-		ClassDef particleManager = nameToClass.get("net/minecraft/class_702");
-		particleManager.getFields().stream().filter(field -> "field_3835".equals(field.getName("intermediary"))).forEach(field -> {
-			extraFields.put(new Member(particleManager.getName(from), field.getName(from), "Ljava/util/Map;"), field.getName(to));
-		});
-
-		ClassDef clientEntityHandler = nameToClass.get("net/minecraft/class_638$class_5612");
-		if (clientEntityHandler != null) {//Only present in 1.17.x (20w45a+)
-			ClassDef clientWorld = nameToClass.get("net/minecraft/class_638");
-			extraFields.put(new Member(clientEntityHandler.getName(from), "this$0", 'L' + clientWorld.getName(from) + ';'), "field_27735");
-		}
-
-		//In dev
-		if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
-			ClassDef option = nameToClass.get("net/minecraft/class_316");
-			ClassDef cyclingOption = nameToClass.get("net/minecraft/class_4064");
-			if (option != null && cyclingOption != null) {//Removed in 1.19
-				extraFields.put(new Member(option.getName(from), "CLOUDS", 'L' + cyclingOption.getName(from) + ';'), "CLOUDS_OF");
+                String bakerImpl = "net/minecraft/class_1088$class_7778";
+		        String modelLoader = "net/minecraft/class_1088";
+                mapper.add(ContextualMapping.forField((out, context) -> {//Only present in 1.19.3
+					out.acceptField(new Member(context.unmapClass(bakerImpl), "this$0", 'L' + context.unmapClass(modelLoader) + ';'), "field_40571");
+				}).usingClasses(bakerImpl, modelLoader));
 			}
 
-			ClassDef worldRenderer = nameToClass.get("net/minecraft/class_761");
-			extraFields.put(new Member(worldRenderer.getName(from), "renderDistance", "I"), "renderDistance_OF");
+			private void devExtraMappings(ContextualMappingProvider mapper) {
+				String option = "net/minecraft/class_316";
+				String cyclingOption = "net/minecraft/class_4064";
+				mapper.add(ContextualMapping.forField((out, context) -> {//Removed in 1.19
+					out.acceptField(new Member(context.unmapClass(option), "CLOUDS", 'L' + context.unmapClass(cyclingOption) + ';'), "CLOUDS_OF");
+				}).usingClasses(option, cyclingOption));
 
-			ClassDef threadExecutor = nameToClass.get("net/minecraft/class_1255");
-			extraMethods.put(new Member(threadExecutor.getName(from), "getTaskCount", "()I"), "getTaskCount_OF");
+				String worldRenderer = "net/minecraft/class_761";
+				mapper.add(ContextualMapping.forField((out, context) -> {
+					out.acceptField(new Member(context.unmapClass(worldRenderer), "renderDistance", "I"), "renderDistance_OF");
+				}).usingClass(worldRenderer));
 
-			ClassDef vertexBuffer = nameToClass.get("net/minecraft/class_291");
-			extraFields.put(new Member(vertexBuffer.getName(from), "vertexCount", "I"), "vertexCount_OF");
+				String threadExecutor = "net/minecraft/class_1255";
+				mapper.add(ContextualMapping.forMethod((out, context) -> {
+					out.acceptMethod(new Member(context.unmapClass(threadExecutor), "getTaskCount", "()I"), "getTaskCount_OF");
+				}).usingClass(threadExecutor));
 
-			String modelPart = nameToClass.get("net/minecraft/class_630").getName(from);
-			extraMethods.put(new Member(modelPart, "getChild", "(Ljava/lang/String;)L" + modelPart + ';'), "getChild_OF");
-		}
+				String vertexBuffer = "net/minecraft/class_291";
+				mapper.add(ContextualMapping.forField((out, context) -> {
+					out.acceptField(new Member(context.unmapClass(vertexBuffer), "vertexCount", "I"), "vertexCount_OF");
+				}).usingClass(vertexBuffer));
 
-		//In prod
-		return (out) -> {
-			for (ClassDef classDef : normalMappings.getClasses()) {
-				String className = classDef.getName(from);
-				out.acceptClass(className, classDef.getName(to));
-
-				for (FieldDef field : classDef.getFields()) {
-					out.acceptField(new Member(className, field.getName(from), field.getDescriptor(from)), field.getName(to));
-				}
-
-				for (MethodDef method : classDef.getMethods()) {
-					out.acceptMethod(new Member(className, method.getName(from), method.getDescriptor(from)), method.getName(to));
-				}
+				String modelPart = "net/minecraft/class_630";
+				mapper.add(ContextualMapping.forMethod((out, context) -> {
+					String modelPartName = context.unmapClass(modelPart);
+					out.acceptMethod(new Member(modelPartName, "getChild", "(Ljava/lang/String;)L" + modelPartName + ';'), "getChild_OF");
+				}).usingClass(modelPart));
 			}
 
-			extraMethods.forEach(out::acceptMethod);
-			extraFields.forEach(out::acceptField);
+			@Override
+			public void load(MappingAcceptor parent) {
+				ContextualMappingProvider out = new ContextualMappingProvider(parent);
 
-			extra.load(out);
+				standardExtraMappings(out);
+				if (FabricLoader.getInstance().isDevelopmentEnvironment()) devExtraMappings(out);
+				out.setContextTransformer(mappings -> new IntermediaryContextTransformer(from, mappings));
+
+				try (BufferedReader in = new BufferedReader(new InputStreamReader(OptifineSetup.class.getResourceAsStream("/mappings/mappings.tiny"), StandardCharsets.UTF_8))) {
+					TinyUtils.createTinyMappingProvider(in, from, to).load(out);
+				} catch (IOException e) {
+					throw new RuntimeException("Failed to read " + from + " -> " + to + " mappings", e);
+				}
+				extra.load(out);
+			}
 		};
 	}
 
